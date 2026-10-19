@@ -1,0 +1,1410 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#11112c">
+<title>A Porta que Respirava Estrelas • E-book 3D Interativo</title>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,600&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
+
+<!-- Tailwind CSS CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Three.js Library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<style>
+:root {
+  color-scheme: dark;
+  --gold: #ffd789;
+  --purple-glow: #a855f7;
+  --ink: #f8f3ff;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--ink);
+  font-family: 'Nunito', sans-serif;
+  background: radial-gradient(ellipse at 30% 10%, #2a2254, #100f28 65%, #050611);
+  overflow-x: hidden;
+}
+
+/* Background Particle Canvas */
+#bgCanvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Glassmorphism Styles */
+.glass-panel {
+  background: rgba(20, 19, 48, 0.82);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(233, 200, 255, 0.22);
+}
+
+.glow-border {
+  box-shadow: 0 0 30px rgba(168, 85, 247, 0.25), 0 20px 50px rgba(0, 0, 0, 0.7);
+}
+
+.text-gold {
+  color: #ffdf9d;
+  text-shadow: 0 0 12px rgba(255, 223, 157, 0.35);
+}
+
+/* Custom Buttons */
+.btn-primary {
+  background: linear-gradient(135deg, #7c4bb3, #3f348c);
+  border: 1px solid rgba(217, 185, 255, 0.45);
+  transition: all 0.25s ease;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #9157d4, #4e40ad);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(150, 80, 220, 0.45);
+}
+
+.btn-choice {
+  background: linear-gradient(120deg, rgba(88, 52, 150, 0.88), rgba(48, 52, 120, 0.88));
+  border: 1px solid rgba(217, 185, 255, 0.35);
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-choice:hover {
+  background: linear-gradient(120deg, #814dbd, #444aab);
+  border-color: #ffd789;
+  transform: scale(1.015);
+  box-shadow: 0 6px 20px rgba(168, 85, 247, 0.4);
+}
+
+/* Dialogue Box */
+.dialogue-box {
+  background: rgba(16, 14, 38, 0.92);
+  border: 2px solid rgba(255, 215, 137, 0.45);
+  border-radius: 18px;
+  position: relative;
+}
+
+.dialogue-box::before {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: 28px;
+  border-width: 0 10px 10px 10px;
+  border-style: solid;
+  border-color: transparent transparent rgba(255, 215, 137, 0.45) transparent;
+}
+
+/* 3D Canvas Target */
+#canvas3D {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: grab;
+}
+
+#canvas3D:active {
+  cursor: grabbing;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #100f28;
+}
+::-webkit-scrollbar-thumb {
+  background: #4e40ad;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #7c4bb3;
+}
+
+/* Action Overlay Banner */
+#actionOverlay {
+  transition: opacity 0.3s ease;
+}
+</style>
+</head>
+
+<body class="relative min-h-screen flex flex-col justify-between">
+
+  <!-- Background Particle Effect Canvas -->
+  <canvas id="bgCanvas"></canvas>
+
+  <!-- Top Navigation Bar -->
+  <header class="sticky top-0 z-30 px-4 py-3 glass-panel border-b border-purple-900/40">
+    <div class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-2">
+        <span class="text-xl">✦</span>
+        <span class="font-bold text-lg md:text-xl font-serif text-gold tracking-wide">A Porta que Respirava Estrelas</span>
+      </div>
+      
+      <!-- Interactive Toolbar Controls -->
+      <div class="flex flex-wrap items-center gap-2">
+        <button id="btnNarrate" class="px-3 py-1.5 text-xs md:text-sm rounded-full bg-white/10 hover:bg-purple-600/50 border border-white/20 text-white flex items-center gap-1.5 transition">
+          <span id="narrateIcon">🔊</span> <span id="narrateText">Ouvir Vozes</span>
+        </button>
+
+        <button id="btnVoiceSelect" class="px-3 py-1.5 text-xs md:text-sm rounded-full bg-white/10 hover:bg-purple-600/50 border border-white/20 text-white flex items-center gap-1.5 transition">
+          🎙️ <span id="voiceLabel">Voz Feminina (pt-BR)</span>
+        </button>
+
+        <button id="btnSound" class="px-3 py-1.5 text-xs md:text-sm rounded-full bg-white/10 hover:bg-purple-600/50 border border-white/20 text-white transition">
+          ♫ Som: <span id="soundStatus">ligado</span>
+        </button>
+
+        <button id="btnChapters" class="px-3 py-1.5 text-xs md:text-sm rounded-full bg-white/10 hover:bg-purple-600/50 border border-white/20 text-white transition">
+          ☰ Capítulos
+        </button>
+
+        <button id="btnRestart" class="px-3 py-1.5 text-xs md:text-sm rounded-full bg-white/10 hover:bg-purple-600/50 border border-white/20 text-white transition">
+          ↺ Reiniciar
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Story Book Layout -->
+  <main class="relative z-10 max-w-6xl mx-auto w-full px-4 py-4 md:py-8 flex-1 flex flex-col justify-center">
+    
+    <section class="grid grid-cols-1 lg:grid-cols-12 rounded-3xl glass-panel glow-border overflow-hidden min-h-[580px]">
+      
+      <!-- Left Column: 3D Interactive Animated Character Stage -->
+      <div class="lg:col-span-6 relative bg-gradient-to-b from-indigo-950/80 via-purple-950/60 to-slate-950/90 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-purple-500/20 min-h-[380px] lg:min-h-[580px]">
+        
+        <!-- Header Page Tag -->
+        <div class="absolute top-4 left-4 z-20 flex items-center gap-2">
+          <span class="px-3 py-1 rounded-full bg-black/60 backdrop-blur-md border border-amber-300/40 text-xs font-semibold text-amber-200" id="pageBadge">
+            ✦ Página 1 de 24
+          </span>
+        </div>
+
+        <!-- Speaker Character Indicator -->
+        <div class="absolute top-4 right-4 z-20">
+          <span id="charTag" class="px-3 py-1 rounded-full bg-purple-900/70 backdrop-blur-md border border-purple-400/30 text-xs font-bold text-purple-200 transition-all opacity-0">
+            Lia & Pingo 3D
+          </span>
+        </div>
+
+        <!-- Action Status Banner -->
+        <div id="actionOverlay" class="absolute inset-x-0 top-16 z-20 flex justify-center opacity-0 pointer-events-none">
+          <span id="actionLabel" class="px-4 py-2 rounded-xl bg-purple-600/90 text-amber-200 font-extrabold text-xs md:text-sm shadow-xl border border-amber-300/50 tracking-wide animate-pulse">
+            ✨ Abrindo a Porta Encantada...
+          </span>
+        </div>
+
+        <!-- 3D Three.js Render Target -->
+        <div class="w-full h-full relative flex-1 min-h-[300px]">
+          <canvas id="canvas3D"></canvas>
+
+          <!-- 3D Orbit Helper -->
+          <div class="absolute bottom-3 left-1/2 -translate-x-1/2 pointer-events-none text-[11px] text-purple-200/70 bg-black/60 px-3 py-1 rounded-full border border-white/10 shadow-lg">
+            🖱️ Toque ou arraste para girar em 3D
+          </div>
+        </div>
+
+        <!-- Speaker Overlay Box -->
+        <div id="speakerOverlay" class="p-4 bg-slate-950/80 border-t border-purple-500/30 transition-all duration-300">
+          <div class="flex items-center gap-3">
+            <div id="speakerAvatar" class="w-10 h-10 rounded-full bg-amber-500/30 border border-amber-300/50 flex items-center justify-center text-xl font-bold text-gold">
+              👧
+            </div>
+            <div>
+              <h4 id="speakerName" class="text-sm font-bold text-amber-300">Lia (A Exploradora)</h4>
+              <p id="speakerSubtitle" class="text-xs text-purple-200/80 italic">Com sua raposinha Pingo...</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Story Narrative & Interactive Decision Tree -->
+      <div class="lg:col-span-6 p-6 md:p-10 flex flex-col justify-between bg-gradient-to-br from-purple-950/30 via-slate-900/60 to-indigo-950/40">
+        
+        <div>
+          <!-- Subtitle Header -->
+          <div class="text-xs font-extrabold tracking-widest text-purple-300 uppercase mb-2 flex items-center gap-2">
+            <span>✧</span> <span>E-BOOK INTERATIVO COM ANIMAÇÕES 3D</span> <span>✧</span>
+          </div>
+
+          <!-- Page Title -->
+          <h1 id="heading" class="font-serif text-2xl md:text-4xl font-bold text-gold mb-4 leading-tight">
+            Uma noite diferente
+          </h1>
+
+          <!-- Story Text Block -->
+          <div id="storyBox" class="space-y-4">
+            <p id="storyText" class="text-base md:text-lg leading-relaxed text-purple-100/90 whitespace-pre-line font-medium">
+              Era uma vez Lia, uma garotinha curiosa que amava explorar a natureza e olhar para o céu. Junto de sua fiel raposinha Pingo, ela vivia imaginando mundos mágicos. Naquela noite, a chuva trouxe um mistério especial.
+            </p>
+          </div>
+
+          <!-- Character Interactive Question Box -->
+          <div id="dialogueBox" class="dialogue-box mt-4 p-4 text-amber-100 hidden">
+            <div class="flex items-start gap-3">
+              <span id="dialogueEmoji" class="text-3xl">👧🦊</span>
+              <div>
+                <span id="dialogueSpeaker" class="font-bold text-amber-300 text-sm block mb-1">Lia & Pingo perguntai:</span>
+                <p id="dialogueText" class="text-sm md:text-base italic leading-relaxed text-amber-50">
+                  "Você quer ser nossa amiga para sempre nesta jornada mágica?"
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Choice Navigation Buttons -->
+        <div class="mt-8">
+          <div id="choicesContainer" class="grid grid-cols-1 gap-3">
+            <!-- Choices generated via JS -->
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- Navigation Footer Controls -->
+    <div class="mt-6 flex items-center justify-between gap-4">
+      <button id="btnPrev" class="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white text-sm font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed">
+        ← Voltar
+      </button>
+
+      <!-- Progress Bar -->
+      <div class="flex-1 max-w-md bg-slate-950/60 h-2.5 rounded-full overflow-hidden border border-purple-500/20 px-0.5 py-0.5">
+        <div id="progressBar" class="h-full bg-gradient-to-r from-purple-500 via-pink-400 to-amber-300 rounded-full transition-all duration-500" style="width: 4.16%;"></div>
+      </div>
+
+      <button id="btnNext" class="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white text-sm font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed">
+        Avançar →
+      </button>
+    </div>
+
+    <!-- Footer Note -->
+    <p class="text-center text-xs text-purple-300/60 mt-4">
+      Escolha cada ação para assistir aos personagens realizando animações em tempo real! ✨
+    </p>
+
+  </main>
+
+  <!-- Modal Container -->
+  <div id="modalOverlay" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
+    <div id="modalContent" class="max-w-lg w-full bg-gradient-to-br from-purple-950 via-slate-900 to-indigo-950 border border-purple-400/40 rounded-3xl p-6 md:p-8 shadow-2xl text-purple-100 relative">
+      <!-- Modal Content Injected Here -->
+    </div>
+  </div>
+
+  <!-- JavaScript App Logic -->
+  <script>
+    /* =========================================================================
+       1. STORY DATA MATRIX & CHARACTER SPEECH PARAMETERS
+       ========================================================================= */
+    const scenes = [
+      ["Uma noite diferente", "Era uma vez Lia, uma garotinha curiosa que adorava explorar. Junto de sua raposinha Pingo, ela imaginava mundos mágicos. Naquela noite, a chuva trouxe um mistério especial.", "Olhar pela janela", 2, "lia"],
+      ["O segredo do quarto", "Toc, toc, toc! Três batidinhas vieram do guarda-roupa. Pequenas estrelas douradas brilhavam na madeira. Uma voz suave sussurrou: “Finalmente você chegou, Lia!”", "Chegar mais perto", 3, "luma"],
+      ["A porta encantada", "A maçaneta parecia feita de luar puro. Lia sentiu seu coração bater acelerado. Havia chegado o momento de tomar uma grande decisão!", "", 4, "lia"],
+      ["A primeira escolha", "“Estávamos esperando por você!”, disse Luma. A porta começou a se abrir e um vento perfumado de flores estelares atravessou o quarto.", "", 5, "luma"],
+      ["O outro lado da realidade", "Atrás da porta havia um céu inteiro! Escadas de luz levavam a ilhas flutuantes, cachoeiras subiam para as nuvens e peixes dourados nadavam no ar.", "Entrar no mundo mágico", 6, "lia"],
+      ["Conheça Lia e Pingo", "Lia ajustou sua mochila e Pingo deu um pulinho animado.\n\n“Eu sou Lia e este é o Pingo! A estrelinha Luma caiu no Lago dos Espelhos. Sem ela, o céu perde seu brilho!”", "Aceitar a missão", 7, "lia"],
+      ["Dois caminhos impossíveis", "Pingo mostrou dois caminhos: uma ponte de bolhas brilhantes e uma floresta encantada que crescia de cabeça para baixo.", "", 8, "pingo"],
+      ["A ponte das bolhas", "As bolhas eram macias como trampolins. Para atravessar, era preciso pular com coragem e alegria no coração!", "", 10, "lia"],
+      // Page 9: Friendship Proposal
+      ["A Floresta Encantada & Uma Nova Amizade", "Lia e Pingo se aproximaram de você com os olhos brilhando de alegria e carinho.", "", 10, "lia_pingo"],
+      ["O Lago dos Espelhos", "Os dois caminhos chegaram a um lago tão claro que parecia feito de luz. No centro, uma concha prateada guardava uma luz fraquinha. Era Luma!", "", 11, "luma"],
+      ["A travessia encantada", "Lia apontou para dois transportes mágicos: “O barquinho anda com desejos. A vitória-régia voa quando despertamos suas luzes. Qual você prefere?”", "", 12, "lia"],
+      ["Luma, a estrelinha", "Dentro da concha, Luma tremia. “As outras estrelas brilham tanto... E se eu não for suficiente?” Lia e você se aproximaram para encorajá-la.", "", 13, "luma"],
+      ["Uma jornada de volta", "Luma começou a brilhar quando ouviu suas palavras carinhosas. Pingo deu uma pirueta: “Precisamos levá-la até o Sino da Lua antes que a noite termine!”", "Subir até a torre", 14, "pingo"],
+      ["A torre da Lua", "Uma escada de nuvens conduzia ao alto da torre. Cada degrau tocava uma nota musical, e o sino de cristal esperava uma palavra mágica.", "", 15, "narrator"],
+      ["O brilho de Luma", "A palavra escolhida brilhou no céu. O sino tocou, e Luma recuperou toda a sua luz estelar. Lia e Pingo comemoraram abraçados!", "Ouvir o sino", 16, "lia"],
+      ["O sonho continua", "A noite ficou totalmente iluminada. “Obrigada por acreditar em mim”, disse Luma. “Vou guardar nossa amizade em cada pontinha da minha luz.”", "Seguir a aventura", 17, "luma"],
+      ["Peixes que nadam no céu", "Peixes luminosos dançaram entre nuvens, e as ilhas flutuantes se cobriram de flores coloridas. O Reino comemorava o retorno do brilho.", "Ver o reino", 18, "narrator"],
+      ["A floresta desperta", "As árvores balançaram suavemente como sinos. Flores mágicas abriram pétalas brilhantes e borboletas desenharam caminhos dourados.", "Passear pela floresta", 19, "narrator"],
+      ["A sabedoria da Coruja", "Uma sábia coruja de óculos dourados pousou em um galho de luz.\n\n“A verdadeira magia não está em nunca sentir medo, mas em seguir com gentileza e esperança.”", "Ouvir a coruja", 20, "coruja"],
+      ["O caminho da esperança", "Um arco-íris de luz apareceu no horizonte. Lia sorriu: “Está na hora de voltar, mas você poderá nos visitar sempre que usar a imaginação!”", "Atravessar o arco-íris", 21, "lia"],
+      ["A amizade que brilha", "Luma e Pingo deixaram uma centelha dourada na sua mão. “Quando precisar de esperança, olhe para o céu. Estaremos piscando para você!”", "Guardar a lembrança", 22, "luma"],
+      ["Uma estrelinha no céu", "A porta do guarda-roupa apareceu novamente. Do outro lado, o quarto estava quentinho. Na janela, uma estrela piscou três vezes.", "Voltar para casa", 23, "narrator"],
+      ["A maior descoberta", "Lia abraçou Pingo com carinho. Agora ela sabia que coragem, gentileza e amizade são as maiores chaves de qualquer mundo mágico.", "Dormir e sonhar", 24, "lia_pingo"],
+      ["O começo de outra aventura", "Lia adormeceu segurando a estrela dourada, com Pingo enroladinho aos seus pés. Em algum lugar do céu, uma nova aventura já estava se preparando. Fim...", "", 0, "narrator"]
+    ];
+
+    const choicesBranching = {
+      "3": [
+        ["🚪 Abrir a Porta Mágica!", "action_open_door"],
+        ["👂 Ouvir com cuidado atrás da porta", "action_listen_door"]
+      ],
+      "7": [
+        ["🫧 Saltar pela Ponte de Bolhas", "action_bubbles"],
+        ["🌳 Explorar a Floresta Encantada & Amizade", "action_forest"]
+      ],
+      "8": [
+        ["💛 Lembrar de um abraço carinhoso e pular!", "action_jump_hug"],
+        ["🌈 Lembrar de uma brincadeira alegre!", "action_jump_play"]
+      ],
+      "9": [
+        ["💖 Sim! Quero muito ser sua amiga para sempre! 💛", "friend_yes"],
+        ["✨ Sim! Vamos viver grandes aventuras juntas!", "friend_forever"],
+        ["🌟 Claro! Adorei conhecer você e o Pingo!", "friend_explore"]
+      ],
+      "10": [
+        ["⛵ Navegar no Barquinho de Desejos", "action_boat"],
+        ["🍃 Voar na Vitória-Régia Luminosa", "action_lilypad"]
+      ],
+      "11": [
+        ["🌠 Fazer um desejo bonito para a Luma", "action_wish"],
+        ["✨ Acordar as luzinhas da concha", "action_light_up"]
+      ],
+      "12": [
+        ["💛 “Você é especial e única, Luma!”", "action_encourage_1"],
+        ["🤝 “Vamos vencer essa jornada juntas!”", "action_encourage_2"]
+      ],
+      "14": [
+        ["❤️ Tocar o Sino com Amor", "action_ring_bell"],
+        ["🦁 Tocar o Sino com Coragem", "action_ring_bell"],
+        ["🌈 Tocar o Sino com Esperança", "action_ring_bell"]
+      ]
+    };
+
+    const speakerProfiles = {
+      narrator: { name: "Narrador", subtitle: "Contando a história...", avatar: "📖", charTag: "Cena 3D" },
+      lia: { name: "Lia", subtitle: "Garotinha Exploradora", avatar: "👧", charTag: "Lia 3D" },
+      pingo: { name: "Pingo", subtitle: "Raposinha Dourada", avatar: "🦊", charTag: "Pingo 3D" },
+      luma: { name: "Luma", subtitle: "Estrelinha Cadente", avatar: "⭐", charTag: "Luma 3D" },
+      coruja: { name: "Coruja Sábia", subtitle: "Guardiã dos Mistérios", avatar: "🦉", charTag: "Coruja 3D" },
+      lia_pingo: { name: "Lia & Pingo", subtitle: "Seus Novos Amigos", avatar: "👧🦊", charTag: "Lia & Pingo 3D" }
+    };
+
+    /* App State Variables */
+    let current = Number(localStorage.getItem('estrela_3d_page') || 1);
+    let historyState = [1];
+    let soundOn = true;
+    let audioCtx = null;
+    let synth = window.speechSynthesis;
+    let voices = [];
+    let selectedFemaleVoice = null;
+    let isActionAnimating = false;
+
+    const $ = id => document.getElementById(id);
+
+    /* =========================================================================
+       2. THREE.JS 3D PROCEDURAL CHARACTER & ACTION ANIMATION ENGINE
+       ========================================================================= */
+    let scene, camera, renderer;
+    let liaGroup, pingoGroup, lumaGroup, corujaGroup, doorGroup, bubblesGroup, bellGroup;
+    let activeSpeaker = 'lia';
+    let isDragging = false, previousMousePosition = { x: 0, y: 0 };
+
+    function init3D() {
+      const container = $('canvas3D').parentElement;
+      const width = container.clientWidth;
+      const height = container.clientHeight || 320;
+
+      scene = new THREE.Scene();
+      scene.fog = new THREE.FogExp2(0x100f28, 0.06);
+
+      camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+      camera.position.set(0, 1.1, 5.2);
+
+      renderer = new THREE.WebGLRenderer({ canvas: $('canvas3D'), alpha: true, antialias: true });
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+      // Lights
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
+      scene.add(ambientLight);
+
+      const dirLight = new THREE.DirectionalLight(0xffdf9d, 1.4);
+      dirLight.position.set(5, 8, 5);
+      scene.add(dirLight);
+
+      const pointLight = new THREE.PointLight(0xd8b8fa, 1.8, 14);
+      pointLight.position.set(-2, 3, 2);
+      scene.add(pointLight);
+
+      // Create Models & Props
+      liaGroup = create3DLia();
+      pingoGroup = create3DPingo();
+      lumaGroup = create3DLuma();
+      corujaGroup = create3DCoruja();
+      doorGroup = create3DDoorProps();
+      bubblesGroup = create3DBubblesProps();
+      bellGroup = create3DBellProps();
+
+      scene.add(liaGroup);
+      scene.add(pingoGroup);
+      scene.add(lumaGroup);
+      scene.add(corujaGroup);
+      scene.add(doorGroup);
+      scene.add(bubblesGroup);
+      scene.add(bellGroup);
+
+      // Orbit Drag Controls
+      const canvas = $('canvas3D');
+      canvas.addEventListener('mousedown', e => { isDragging = true; previousMousePosition = { x: e.clientX, y: e.clientY }; });
+      canvas.addEventListener('mousemove', e => {
+        if (!isDragging) return;
+        const deltaX = e.clientX - previousMousePosition.x;
+        rotateActiveGroup(deltaX * 0.01);
+        previousMousePosition = { x: e.clientX, y: e.clientY };
+      });
+      window.addEventListener('mouseup', () => { isDragging = false; });
+
+      // Touch Orbit
+      canvas.addEventListener('touchstart', e => {
+        if (e.touches.length === 1) {
+          isDragging = true;
+          previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        }
+      });
+      canvas.addEventListener('touchmove', e => {
+        if (!isDragging || e.touches.length !== 1) return;
+        const deltaX = e.touches[0].clientX - previousMousePosition.x;
+        rotateActiveGroup(deltaX * 0.01);
+        previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      });
+      window.addEventListener('touchend', () => { isDragging = false; });
+
+      window.addEventListener('resize', onWindowResize);
+      animate3D();
+    }
+
+    function rotateActiveGroup(amount) {
+      if (activeSpeaker === 'lia' || activeSpeaker === 'lia_pingo') liaGroup.rotation.y += amount;
+      if (activeSpeaker === 'pingo' || activeSpeaker === 'lia_pingo') pingoGroup.rotation.y += amount;
+      if (activeSpeaker === 'luma') lumaGroup.rotation.y += amount;
+      if (activeSpeaker === 'coruja') corujaGroup.rotation.y += amount;
+    }
+
+    /* --- Model 1: Lia (Girl with Brown Wavy Hair, Yellow Shirt & Backpack) --- */
+    function create3DLia() {
+      const group = new THREE.Group();
+
+      const skinMat = new THREE.MeshToonMaterial({ color: 0xffd8b5 });
+      const hairMat = new THREE.MeshToonMaterial({ color: 0x4a2a18 });
+      const shirtMat = new THREE.MeshToonMaterial({ color: 0xfacc15 });
+      const pantsMat = new THREE.MeshToonMaterial({ color: 0x334155 });
+      const backpackMat = new THREE.MeshToonMaterial({ color: 0x0284c7 });
+      const eyeMat = new THREE.MeshBasicMaterial({ color: 0x3d2314 });
+
+      // Body / Shirt
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.45, 0.8, 24), shirtMat);
+      body.position.y = 0;
+      group.add(body);
+
+      // Pants
+      const pants = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.38, 0.5, 24), pantsMat);
+      pants.position.y = -0.6;
+      group.add(pants);
+
+      // Head
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.55, 32, 32), skinMat);
+      head.position.y = 0.85;
+      group.add(head);
+
+      // Wavy Hair
+      const hairTopGeo = new THREE.SphereGeometry(0.6, 32, 32);
+      hairTopGeo.scale(1.05, 1.1, 1.1);
+      const hairTop = new THREE.Mesh(hairTopGeo, hairMat);
+      hairTop.position.set(0, 0.92, -0.05);
+      group.add(hairTop);
+
+      for (let i = -2; i <= 2; i++) {
+        const strand = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.7, 16), hairMat);
+        strand.position.set(i * 0.22, 0.6, -0.35);
+        strand.rotation.z = i * 0.1;
+        group.add(strand);
+      }
+
+      // Eyes & Smile
+      const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.08, 16, 16), eyeMat);
+      eyeL.position.set(-0.2, 0.92, 0.5);
+      const eyeR = eyeL.clone();
+      eyeR.position.x = 0.2;
+      group.add(eyeL);
+      group.add(eyeR);
+
+      const smile = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.02, 8, 16, Math.PI), new THREE.MeshBasicMaterial({ color: 0xa83232 }));
+      smile.position.set(0, 0.78, 0.53);
+      smile.rotation.x = Math.PI;
+      group.add(smile);
+
+      // Right Arm (Pivoted for waving & door opening)
+      const rightArmGroup = new THREE.Group();
+      rightArmGroup.name = "rightArmGroup";
+      rightArmGroup.position.set(0.42, 0.3, 0);
+      const rightArmMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.5, 12), shirtMat);
+      rightArmMesh.position.set(0.1, -0.2, 0);
+      rightArmGroup.add(rightArmMesh);
+      group.add(rightArmGroup);
+
+      // Backpack
+      const pack = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.65, 0.3), backpackMat);
+      pack.position.set(0, 0.1, -0.45);
+      group.add(pack);
+
+      group.position.set(-0.5, -0.1, 0);
+      return group;
+    }
+
+    /* --- Model 2: Pingo (Golden Fox) --- */
+    function create3DPingo() {
+      const group = new THREE.Group();
+
+      const furMat = new THREE.MeshToonMaterial({ color: 0xf97316 });
+      const bellyMat = new THREE.MeshToonMaterial({ color: 0xfff7ed });
+      const eyeMat = new THREE.MeshBasicMaterial({ color: 0x1f2937 });
+      const noseMat = new THREE.MeshBasicMaterial({ color: 0x111827 });
+
+      const bodyGeo = new THREE.SphereGeometry(0.5, 32, 32);
+      bodyGeo.scale(1, 1.1, 0.85);
+      const body = new THREE.Mesh(bodyGeo, furMat);
+      body.position.y = -0.2;
+      group.add(body);
+
+      const bellyGeo = new THREE.SphereGeometry(0.38, 24, 24);
+      bellyGeo.scale(0.8, 1, 0.5);
+      const belly = new THREE.Mesh(bellyGeo, bellyMat);
+      belly.position.set(0, -0.25, 0.35);
+      group.add(belly);
+
+      const headGeo = new THREE.SphereGeometry(0.45, 32, 32);
+      headGeo.scale(1.1, 0.95, 1);
+      const head = new THREE.Mesh(headGeo, furMat);
+      head.position.set(0, 0.45, 0.1);
+      group.add(head);
+
+      const snoutGeo = new THREE.ConeGeometry(0.22, 0.4, 16);
+      snoutGeo.rotateX(Math.PI / 2);
+      const snout = new THREE.Mesh(snoutGeo, bellyMat);
+      snout.position.set(0, 0.38, 0.52);
+      group.add(snout);
+
+      const nose = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 12), noseMat);
+      nose.position.set(0, 0.42, 0.72);
+      group.add(nose);
+
+      const earL = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.45, 16), furMat);
+      earL.position.set(-0.28, 0.9, 0.1);
+      earL.rotation.z = 0.2;
+      const earR = earL.clone();
+      earR.position.x = 0.28;
+      earR.rotation.z = -0.2;
+      group.add(earL);
+      group.add(earR);
+
+      const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.07, 16, 16), eyeMat);
+      eyeL.position.set(-0.18, 0.52, 0.48);
+      const eyeR = eyeL.clone();
+      eyeR.position.x = 0.18;
+      group.add(eyeL);
+      group.add(eyeR);
+
+      const tail = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.85, 16), furMat);
+      tail.position.set(0, -0.3, -0.55);
+      tail.rotation.x = -Math.PI / 3;
+      group.add(tail);
+
+      group.position.set(0.65, -0.35, 0.2);
+      return group;
+    }
+
+    /* --- Model 3: Luma (Glowing Star Spirit) --- */
+    function create3DLuma() {
+      const group = new THREE.Group();
+
+      const starMat = new THREE.MeshStandardMaterial({
+        color: 0xffea9f,
+        emissive: 0xffc83b,
+        emissiveIntensity: 0.85,
+        roughness: 0.1
+      });
+
+      const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.65, 2), starMat);
+      group.add(core);
+
+      for (let i = 0; i < 5; i++) {
+        const ray = new THREE.Mesh(new THREE.ConeGeometry(0.2, 1.0, 12), starMat);
+        const angle = (i * Math.PI * 2) / 5;
+        ray.position.set(Math.sin(angle) * 0.65, Math.cos(angle) * 0.65, 0);
+        ray.rotation.z = -angle;
+        group.add(ray);
+      }
+
+      const eyeMat = new THREE.MeshBasicMaterial({ color: 0x331a00 });
+      const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 12), eyeMat);
+      eyeL.position.set(-0.18, 0.08, 0.6);
+      const eyeR = eyeL.clone();
+      eyeR.position.x = 0.18;
+      group.add(eyeL);
+      group.add(eyeR);
+
+      // Particle Aura
+      const particlesGeo = new THREE.BufferGeometry();
+      const count = 40;
+      const posArray = new Float32Array(count * 3);
+      for (let i = 0; i < count * 3; i++) {
+        posArray[i] = (Math.random() - 0.5) * 2.4;
+      }
+      particlesGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+      const pMat = new THREE.PointsMaterial({ size: 0.07, color: 0xfffbca, transparent: true, opacity: 0.9 });
+      group.add(new THREE.Points(particlesGeo, pMat));
+
+      group.position.set(0, 0.2, 0);
+      return group;
+    }
+
+    /* --- Model 4: Wise Owl --- */
+    function create3DCoruja() {
+      const group = new THREE.Group();
+
+      const owlMat = new THREE.MeshToonMaterial({ color: 0x5c4238 });
+      const chestMat = new THREE.MeshToonMaterial({ color: 0xdfcfbe });
+      const goldMat = new THREE.MeshStandardMaterial({ color: 0xffd789, metalness: 0.8, roughness: 0.2 });
+
+      const bodyGeo = new THREE.SphereGeometry(0.8, 32, 32);
+      bodyGeo.scale(0.9, 1.2, 0.9);
+      group.add(new THREE.Mesh(bodyGeo, owlMat));
+
+      const chestGeo = new THREE.SphereGeometry(0.55, 24, 24);
+      chestGeo.scale(0.7, 1, 0.4);
+      const chest = new THREE.Mesh(chestGeo, chestMat);
+      chest.position.set(0, -0.1, 0.52);
+      group.add(chest);
+
+      const beakGeo = new THREE.ConeGeometry(0.12, 0.32, 12);
+      beakGeo.rotateX(Math.PI / 1.8);
+      const beak = new THREE.Mesh(beakGeo, goldMat);
+      beak.position.set(0, 0.32, 0.78);
+      group.add(beak);
+
+      const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.22, 20, 20), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+      eyeL.position.set(-0.28, 0.42, 0.62);
+      const pupilL = new THREE.Mesh(new THREE.SphereGeometry(0.11, 16, 16), new THREE.MeshBasicMaterial({ color: 0x111122 }));
+      pupilL.position.set(-0.28, 0.42, 0.8);
+
+      const eyeR = eyeL.clone(); eyeR.position.x = 0.28;
+      const pupilR = pupilL.clone(); pupilR.position.x = 0.28;
+
+      group.add(eyeL); group.add(eyeR);
+      group.add(pupilL); group.add(pupilR);
+
+      const glassL = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.03, 16, 32), goldMat);
+      glassL.position.set(-0.28, 0.42, 0.82);
+      const glassR = glassL.clone(); glassR.position.x = 0.28;
+      group.add(glassL); group.add(glassR);
+
+      group.position.set(0, -0.1, 0);
+      return group;
+    }
+
+    /* --- Interactive Action Props --- */
+    function create3DDoorProps() {
+      const group = new THREE.Group();
+
+      const doorFrameMat = new THREE.MeshStandardMaterial({ color: 0x4a3b6b, roughness: 0.3 });
+      const doorPanelMat = new THREE.MeshStandardMaterial({ color: 0x8b5cf6, emissive: 0x2e1065, roughness: 0.2 });
+      const goldMat = new THREE.MeshStandardMaterial({ color: 0xffd789, metalness: 0.9, roughness: 0.1 });
+
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(1.6, 2.6, 0.15), doorFrameMat);
+      group.add(frame);
+
+      const panel = new THREE.Mesh(new THREE.BoxGeometry(1.3, 2.3, 0.12), doorPanelMat);
+      panel.position.set(0, 0, 0.02);
+      panel.name = "doorPanel";
+      group.add(panel);
+
+      const handle = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 16), goldMat);
+      handle.position.set(0.48, 0, 0.12);
+      handle.name = "doorHandle";
+      group.add(handle);
+
+      group.position.set(0, 0.3, -0.6);
+      group.visible = false;
+      return group;
+    }
+
+    function create3DBubblesProps() {
+      const group = new THREE.Group();
+      const bubbleMat = new THREE.MeshPhysicalMaterial({
+        color: 0xa855f7,
+        transmission: 0.9,
+        opacity: 0.85,
+        transparent: true,
+        roughness: 0,
+        ior: 1.2
+      });
+
+      for (let i = 0; i < 6; i++) {
+        const bubble = new THREE.Mesh(new THREE.SphereGeometry(0.35 + Math.random() * 0.25, 24, 24), bubbleMat);
+        bubble.position.set((i - 2.5) * 0.9, -0.6 + Math.sin(i) * 0.3, (i % 2) * 0.4);
+        group.add(bubble);
+      }
+
+      group.visible = false;
+      return group;
+    }
+
+    function create3DBellProps() {
+      const group = new THREE.Group();
+      const bellMat = new THREE.MeshStandardMaterial({ color: 0xffe082, metalness: 0.9, roughness: 0.15 });
+
+      const bell = new THREE.Mesh(new THREE.ConeGeometry(0.6, 0.9, 24), bellMat);
+      bell.name = "moonBell";
+      group.add(bell);
+
+      group.position.set(0, 0.8, -0.2);
+      group.visible = false;
+      return group;
+    }
+
+    /* Animation Render Loop */
+    function animate3D() {
+      requestAnimationFrame(animate3D);
+
+      const time = Date.now() * 0.0025;
+
+      // Gentle floating animations if not locked in action animation
+      if (!isActionAnimating) {
+        if (liaGroup) liaGroup.position.y = -0.1 + Math.sin(time * 1.2) * 0.04;
+        if (pingoGroup) pingoGroup.position.y = -0.35 + Math.sin(time * 1.5) * 0.05;
+        if (lumaGroup) {
+          lumaGroup.position.y = 0.2 + Math.sin(time * 2) * 0.12;
+          lumaGroup.rotation.y += 0.012;
+        }
+        if (corujaGroup) corujaGroup.position.y = -0.1 + Math.sin(time * 0.9) * 0.03;
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    function onWindowResize() {
+      const container = $('canvas3D').parentElement;
+      if (!container) return;
+      const width = container.clientWidth;
+      const height = container.clientHeight || 320;
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      renderer.setSize(width, height);
+    }
+
+    function showActionBanner(text) {
+      const overlay = $('actionOverlay');
+      $('actionLabel').textContent = text;
+      overlay.style.opacity = '1';
+      setTimeout(() => { overlay.style.opacity = '0'; }, 3200);
+    }
+
+    /* =========================================================================
+       3. Dynamic Real-Time Action Animations
+       ========================================================================= */
+
+    /* Action 1: Door Opening Animation */
+    function animateDoorOpeningSequence(onComplete) {
+      isActionAnimating = true;
+      showActionBanner("✨ Lia aproximando da maçaneta e abrindo a porta...");
+      playBeepSound('magic');
+
+      doorGroup.visible = true;
+      liaGroup.visible = true;
+      pingoGroup.visible = true;
+
+      liaGroup.position.set(-0.6, -0.1, 0);
+      pingoGroup.position.set(0.7, -0.35, 0.2);
+
+      let arm = liaGroup.getObjectByName("rightArmGroup");
+      let door = doorGroup.getObjectByName("doorPanel");
+
+      let startTime = Date.now();
+      function step() {
+        let elapsed = (Date.now() - startTime) / 1000;
+
+        if (elapsed < 1.0) {
+          // Lia reaches towards door
+          liaGroup.position.x = -0.6 + elapsed * 0.3;
+          if (arm) arm.rotation.z = -elapsed * 1.2;
+          requestAnimationFrame(step);
+        } else if (elapsed < 2.4) {
+          // Door rotates open
+          if (door) door.rotation.y = -(elapsed - 1.0) * 1.2;
+          liaGroup.position.z = -(elapsed - 1.0) * 0.4;
+          pingoGroup.position.z = 0.2 - (elapsed - 1.0) * 0.4;
+          requestAnimationFrame(step);
+        } else {
+          // Reset props
+          doorGroup.visible = false;
+          if (arm) arm.rotation.z = 0;
+          if (door) door.rotation.y = 0;
+          isActionAnimating = false;
+          if (onComplete) onComplete();
+        }
+      }
+      step();
+    }
+
+    /* Action 2: Bubble Jump Sequence */
+    function animateBubbleJumpSequence(onComplete) {
+      isActionAnimating = true;
+      showActionBanner("🫧 Saltando pelas bolhas cintilantes!");
+      playBeepSound('magic');
+
+      bubblesGroup.visible = true;
+      liaGroup.visible = true;
+      pingoGroup.visible = true;
+
+      let startTime = Date.now();
+      function step() {
+        let elapsed = (Date.now() - startTime) / 1000;
+
+        if (elapsed < 2.5) {
+          liaGroup.position.x = -1.2 + elapsed * 0.95;
+          liaGroup.position.y = -0.1 + Math.abs(Math.sin(elapsed * 6)) * 0.6;
+
+          pingoGroup.position.x = -1.6 + elapsed * 0.95;
+          pingoGroup.position.y = -0.35 + Math.abs(Math.sin(elapsed * 6 + 0.3)) * 0.6;
+
+          requestAnimationFrame(step);
+        } else {
+          bubblesGroup.visible = false;
+          liaGroup.position.set(-0.4, -0.1, 0);
+          pingoGroup.position.set(0.6, -0.35, 0.2);
+          isActionAnimating = false;
+          if (onComplete) onComplete();
+        }
+      }
+      step();
+    }
+
+    /* Action 3: Star Wish & Moon Bell Sequence */
+    function animateStarBellSequence(onComplete) {
+      isActionAnimating = true;
+      showActionBanner("🔔 O Sino da Lua ressoa trazendo luz!");
+      playBeepSound('magic');
+
+      bellGroup.visible = true;
+      lumaGroup.visible = true;
+
+      let bell = bellGroup.getObjectByName("moonBell");
+
+      let startTime = Date.now();
+      function step() {
+        let elapsed = (Date.now() - startTime) / 1000;
+
+        if (elapsed < 2.2) {
+          if (bell) bell.rotation.z = Math.sin(elapsed * 12) * 0.3;
+          lumaGroup.scale.setScalar(1 + Math.sin(elapsed * 8) * 0.2);
+          requestAnimationFrame(step);
+        } else {
+          bellGroup.visible = false;
+          lumaGroup.scale.setScalar(1);
+          isActionAnimating = false;
+          if (onComplete) onComplete();
+        }
+      }
+      step();
+    }
+
+    /* Friendship Joy Celebration Jump */
+    function triggerFriendshipJumpAnimation() {
+      isActionAnimating = true;
+      showActionBanner("💖 Amigos para sempre no Reino Estelar!");
+      playBeepSound('magic');
+
+      let startTime = Date.now();
+      function jump() {
+        let elapsed = (Date.now() - startTime) / 1000;
+        if (elapsed < 1.8) {
+          liaGroup.position.y = -0.1 + Math.abs(Math.sin(elapsed * 10)) * 0.55;
+          pingoGroup.position.y = -0.35 + Math.abs(Math.sin(elapsed * 10 + 0.2)) * 0.55;
+          liaGroup.rotation.y += 0.12;
+          pingoGroup.rotation.y += 0.12;
+          requestAnimationFrame(jump);
+        } else {
+          liaGroup.position.set(-0.5, -0.1, 0);
+          pingoGroup.position.set(0.5, -0.35, 0.2);
+          liaGroup.rotation.y = 0;
+          pingoGroup.rotation.y = 0;
+          isActionAnimating = false;
+        }
+      }
+      jump();
+    }
+
+    function update3DCharacterView(speakerKey) {
+      activeSpeaker = speakerKey;
+
+      liaGroup.visible = false;
+      pingoGroup.visible = false;
+      lumaGroup.visible = false;
+      corujaGroup.visible = false;
+      doorGroup.visible = false;
+      bubblesGroup.visible = false;
+      bellGroup.visible = false;
+
+      if (speakerKey === 'lia') {
+        liaGroup.visible = true;
+        pingoGroup.visible = true;
+        liaGroup.position.set(-0.4, -0.1, 0);
+        pingoGroup.position.set(0.6, -0.35, 0.2);
+      } else if (speakerKey === 'pingo') {
+        pingoGroup.visible = true;
+        pingoGroup.position.set(0, -0.2, 0);
+      } else if (speakerKey === 'luma') {
+        lumaGroup.visible = true;
+      } else if (speakerKey === 'coruja') {
+        corujaGroup.visible = true;
+      } else if (speakerKey === 'lia_pingo') {
+        liaGroup.visible = true;
+        pingoGroup.visible = true;
+        liaGroup.position.set(-0.5, -0.1, 0);
+        pingoGroup.position.set(0.5, -0.35, 0.2);
+      } else {
+        liaGroup.visible = true;
+        pingoGroup.visible = true;
+      }
+
+      const prof = speakerProfiles[speakerKey] || speakerProfiles.narrator;
+      $('speakerAvatar').textContent = prof.avatar;
+      $('speakerName').textContent = prof.name;
+      $('speakerSubtitle').textContent = prof.subtitle;
+      $('charTag').textContent = prof.charTag;
+      $('charTag').style.opacity = '1';
+    }
+
+    /* =========================================================================
+       4. BRAZILIAN PORTUGUESE FEMALE VOICE SYNTHESIS ENGINE
+       ========================================================================= */
+    function initVoices() {
+      if (!('speechSynthesis' in window)) return;
+
+      function loadVoices() {
+        voices = synth.getVoices();
+        selectedFemaleVoice = voices.find(v => v.lang.includes('pt') && (
+          v.name.includes('Google português do Brasil') ||
+          v.name.includes('Francisca') ||
+          v.name.includes('Luciana') ||
+          v.name.includes('Victoria') ||
+          v.name.includes('Maria') ||
+          v.name.includes('Helena')
+        )) || voices.find(v => v.lang.startsWith('pt')) || null;
+
+        if (selectedFemaleVoice) {
+          $('voiceLabel').textContent = 'Voz: ' + (selectedFemaleVoice.name.split(' ')[0] || 'Feminina');
+        }
+      }
+
+      loadVoices();
+      if (speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = loadVoices;
+      }
+    }
+
+    function speakText(text, speakerKey = 'narrator') {
+      if (!('speechSynthesis' in window)) return;
+
+      synth.cancel();
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'pt-BR';
+
+      if (selectedFemaleVoice) {
+        utterance.voice = selectedFemaleVoice;
+      }
+
+      if (speakerKey === 'lia') {
+        utterance.pitch = 1.3;
+        utterance.rate = 1.0;
+      } else if (speakerKey === 'pingo') {
+        utterance.pitch = 1.4;
+        utterance.rate = 1.08;
+      } else if (speakerKey === 'luma') {
+        utterance.pitch = 1.25;
+        utterance.rate = 0.88;
+      } else if (speakerKey === 'coruja') {
+        utterance.pitch = 0.88;
+        utterance.rate = 0.9;
+      } else if (speakerKey === 'lia_pingo') {
+        utterance.pitch = 1.28;
+        utterance.rate = 0.98;
+      } else {
+        utterance.pitch = 1.0;
+        utterance.rate = 0.92;
+      }
+
+      $('narrateIcon').textContent = '🔊';
+      $('narrateText').textContent = 'Falando...';
+
+      utterance.onend = () => {
+        $('narrateIcon').textContent = '🔊';
+        $('narrateText').textContent = 'Ouvir Vozes';
+      };
+
+      utterance.onerror = () => {
+        $('narrateIcon').textContent = '🔊';
+        $('narrateText').textContent = 'Ouvir Vozes';
+      };
+
+      synth.speak(utterance);
+    }
+
+    function playBeepSound(type = 'click') {
+      if (!soundOn) return;
+      try {
+        audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+        let osc = audioCtx.createOscillator();
+        let gain = audioCtx.createGain();
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        if (type === 'click') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(900, audioCtx.currentTime + 0.15);
+          gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.2);
+        } else if (type === 'magic') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(450, audioCtx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(1350, audioCtx.currentTime + 0.45);
+          gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.5);
+        }
+      } catch (e) {
+        console.warn(e);
+      }
+    }
+
+    /* =========================================================================
+       5. STORY ROUTING & CORE UI RENDERER
+       ========================================================================= */
+    function navigateTo(pageIndex, recordHistory = true) {
+      if (pageIndex < 1 || pageIndex > 24) return;
+
+      synth.cancel();
+
+      if (recordHistory && pageIndex !== current) {
+        historyState.push(pageIndex);
+      }
+
+      current = pageIndex;
+      localStorage.setItem('estrela_3d_page', current);
+      renderPage();
+      playBeepSound('click');
+    }
+
+    function handleChoiceAction(actionType) {
+      if (actionType === 'action_open_door') {
+        animateDoorOpeningSequence(() => navigateTo(4));
+      } else if (actionType === 'action_listen_door') {
+        navigateTo(4);
+      } else if (actionType === 'action_bubbles' || actionType === 'action_jump_hug' || actionType === 'action_jump_play') {
+        animateBubbleJumpSequence(() => navigateTo(10));
+      } else if (actionType === 'action_forest') {
+        navigateTo(9);
+      } else if (actionType === 'friend_yes' || actionType === 'friend_forever' || actionType === 'friend_explore') {
+        handleFriendshipChoice(actionType);
+      } else if (actionType === 'action_boat' || actionType === 'action_lilypad') {
+        navigateTo(11);
+      } else if (actionType === 'action_wish' || actionType === 'action_light_up') {
+        navigateTo(12);
+      } else if (actionType === 'action_encourage_1' || actionType === 'action_encourage_2') {
+        navigateTo(13);
+      } else if (actionType === 'action_ring_bell') {
+        animateStarBellSequence(() => navigateTo(15));
+      } else {
+        navigateTo(10);
+      }
+    }
+
+    function renderPage() {
+      const sceneData = scenes[current - 1];
+      const title = sceneData[0];
+      const story = sceneData[1];
+      const speakerKey = sceneData[4] || 'narrator';
+
+      $('heading').textContent = title;
+      $('pageBadge').textContent = `✦ Página ${current} de 24`;
+      $('progressBar').style.width = `${(current / 24) * 100}%`;
+
+      update3DCharacterView(speakerKey);
+
+      const dialogueBox = $('dialogueBox');
+      if (current === 9) {
+        $('storyText').textContent = "Na Floresta Encantada, Lia e Pingo deram um passo à frente sorrindo para você com carinho nos olhos.";
+        dialogueBox.classList.remove('hidden');
+        $('dialogueEmoji').textContent = "👧🦊";
+        $('dialogueSpeaker').textContent = "Lia & Pingo perguntai com carinho:";
+        $('dialogueText').textContent = "“Você é uma pessoa incrível! Você quer ser nossa amiga para sempre nesta grande jornada mágica?”";
+      } else {
+        dialogueBox.classList.add('hidden');
+        $('storyText').textContent = story;
+      }
+
+      const choicesContainer = $('choicesContainer');
+      choicesContainer.innerHTML = '';
+
+      const opts = choicesBranching[current] || [];
+
+      if (opts.length > 0) {
+        opts.forEach(([label, targetAction]) => {
+          const btn = document.createElement('button');
+          btn.className = 'btn-choice w-full py-3.5 px-5 rounded-2xl text-left font-bold text-white text-sm md:text-base flex items-center justify-between group shadow-lg';
+
+          btn.innerHTML = `
+            <span>${label}</span>
+            <span class="text-gold opacity-70 group-hover:opacity-100 group-hover:translate-x-1 transition-all">➔</span>
+          `;
+
+          btn.onclick = () => handleChoiceAction(targetAction);
+          choicesContainer.appendChild(btn);
+        });
+      } else {
+        const btn = document.createElement('button');
+        btn.className = 'btn-primary w-full py-3.5 px-5 rounded-2xl text-center font-extrabold text-gold text-base shadow-lg';
+
+        if (current === 24) {
+          btn.textContent = '🏅 Receber meu Diploma Estelar';
+          btn.onclick = openCertificateModal;
+        } else {
+          const nextText = sceneData[2] || 'Continuar a jornada';
+          btn.textContent = `✨ ${nextText}`;
+          btn.onclick = () => navigateTo(sceneData[3] || current + 1);
+        }
+
+        choicesContainer.appendChild(btn);
+      }
+
+      $('btnPrev').disabled = (current === 1);
+      $('btnNext').textContent = (current === 24) ? '🏅 Diploma' : 'Avançar →';
+    }
+
+    function handleFriendshipChoice(choiceType) {
+      playBeepSound('magic');
+      triggerFriendshipJumpAnimation();
+
+      const dialogueBox = $('dialogueBox');
+      const choicesContainer = $('choicesContainer');
+
+      let replyMsg = "";
+      if (choiceType === 'friend_yes') {
+        replyMsg = "“Ebaaa! 💖 Nossa amizade vai brilhar mais forte que todas as estrelas do céu! Vamos para o Lago dos Espelhos!”";
+      } else if (choiceType === 'friend_forever') {
+        replyMsg = "“Que alegria mágica! ✨ Amigas estelares para sempre! Prometemos cuidar de você em cada passo!”";
+      } else {
+        replyMsg = "“Incrível! 🌟 Mal podemos esperar para explorar tudo junto com você! Vamos continuar nossa missão!”";
+      }
+
+      $('dialogueText').textContent = replyMsg;
+      speakText(replyMsg, 'lia_pingo');
+
+      choicesContainer.innerHTML = '';
+      const continueBtn = document.createElement('button');
+      continueBtn.className = 'btn-primary w-full py-3.5 px-5 rounded-2xl text-center font-extrabold text-gold text-base shadow-lg animate-bounce mt-2';
+      continueBtn.textContent = '🚀 Ir para o Lago dos Espelhos com Lia & Pingo!';
+      continueBtn.onclick = () => navigateTo(10);
+      choicesContainer.appendChild(continueBtn);
+    }
+
+    /* =========================================================================
+       6. MODALS & PRINTABLE CERTIFICATE GENERATOR
+       ========================================================================= */
+    function showModal(html) {
+      $('modalContent').innerHTML = html;
+      $('modalOverlay').classList.remove('hidden');
+      $('modalOverlay').classList.add('flex');
+    }
+
+    function closeModal() {
+      $('modalOverlay').classList.add('hidden');
+      $('modalOverlay').classList.remove('flex');
+    }
+
+    $('modalOverlay').onclick = (e) => {
+      if (e.target === $('modalOverlay')) closeModal();
+    };
+
+    $('btnChapters').onclick = () => {
+      let listHTML = `<h2 class="font-serif text-2xl text-gold font-bold mb-3">✨ Capítulos Mágicos</h2>
+                      <p class="text-xs text-purple-200 mb-4">Escolha qualquer cena para visitar:</p>
+                      <div class="max-h-[50vh] overflow-y-auto space-y-2 pr-1">`;
+
+      scenes.forEach((s, idx) => {
+        listHTML += `<button onclick="closeModal(); navigateTo(${idx + 1})" class="w-full text-left p-3 rounded-xl bg-white/5 hover:bg-purple-600/30 border border-purple-500/20 text-xs md:text-sm text-purple-100 flex items-center justify-between">
+                      <span><strong>${idx + 1}.</strong> ${s[0]}</span>
+                      <span class="text-gold">✦</span>
+                    </button>`;
+      });
+
+      listHTML += `</div><button onclick="closeModal()" class="mt-5 w-full py-2.5 rounded-xl bg-white/10 text-white font-bold text-sm">Fechar</button>`;
+      showModal(listHTML);
+    };
+
+    function openCertificateModal() {
+      playBeepSound('magic');
+      const html = `
+        <div id="printArea" class="text-center p-4 border-2 border-amber-300/60 rounded-2xl bg-slate-950/90">
+          <div class="text-3xl mb-1">🌟</div>
+          <h2 class="font-serif text-2xl font-bold text-gold">Diploma de Explorador(a) Estelar</h2>
+          <p class="text-xs text-purple-200 mt-1">Este certificado de amizade pertence a:</p>
+          <input id="kidName" type="text" placeholder="Digite seu nome aqui..." class="mt-3 mb-3 w-full p-2.5 rounded-xl bg-slate-900 border border-purple-400 text-center text-gold font-bold text-base focus:outline-none focus:border-amber-300">
+          <p class="text-xs text-purple-200 leading-relaxed">
+            Por ter ajudado Lia, Pingo e Luma no Reino de Além do Imaginável e demonstrado os valores de <strong>Amizade, Coragem, Bondade e Imaginação</strong>.
+          </p>
+          <div class="text-sm text-amber-200 mt-3 font-serif italic">✨ A magia do céu sempre viverá em seu coração! ✨</div>
+        </div>
+        <div class="mt-5 space-y-2">
+          <button id="btnPrint" class="btn-primary w-full py-3 rounded-xl font-bold text-gold text-sm">🖨️ Imprimir Diploma</button>
+          <button onclick="closeModal()" class="w-full py-2.5 rounded-xl bg-white/10 text-white font-bold text-sm">Fechar</button>
+        </div>
+      `;
+      showModal(html);
+
+      setTimeout(() => {
+        $('btnPrint').onclick = () => {
+          const name = $('kidName').value || 'Explorador(a) Estelar';
+          const printWindow = window.open('', '_blank');
+          if (!printWindow) {
+            alert('Permita pop-ups para imprimir seu diploma.');
+            return;
+          }
+          printWindow.document.write(`
+            <html>
+            <head>
+              <title>Diploma Estelar - ${name}</title>
+              <style>
+                body { font-family: 'Georgia', serif; text-align: center; padding: 60px; background: #0c0b24; color: #ffdf9d; }
+                .border-box { border: 10px double #ffd789; padding: 40px; border-radius: 20px; }
+                h1 { font-size: 36px; color: #ffd789; }
+                h2 { font-size: 28px; color: #ffffff; }
+                p { font-size: 18px; color: #e0c3ff; line-height: 1.6; }
+              </style>
+            </head>
+            <body>
+              <div class="border-box">
+                <h1>✨ Diploma de Explorador(a) Estelar ✨</h1>
+                <p>Certificamos com alegria que</p>
+                <h2>${name.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</h2>
+                <p>Concluiu a aventura mágica de <strong>A Porta que Respirava Estrelas</strong> junto com Lia e Pingo!</p>
+                <p>Demonstrando o brilho da verdadeira amizade e bondade!</p>
+                <div style="font-size: 40px; margin-top: 20px;">👧 🦊 ⭐ 🦉</div>
+              </div>
+            </body>
+            </html>
+          `);
+          printWindow.document.close();
+          printWindow.print();
+        };
+      }, 100);
+    }
+
+    /* =========================================================================
+       7. BACKGROUND STARFIELD CANVAS
+       ========================================================================= */
+    function initBgCanvas() {
+      const canvas = $('bgCanvas');
+      const ctx = canvas.getContext('2d');
+      let stars = [];
+
+      function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        stars = [];
+        for (let i = 0; i < 110; i++) {
+          stars.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            size: Math.random() * 2.2,
+            alpha: Math.random(),
+            speed: 0.005 + Math.random() * 0.012
+          });
+        }
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#ffffff';
+
+        stars.forEach(s => {
+          s.alpha += s.speed;
+          if (s.alpha > 1 || s.alpha < 0) s.speed = -s.speed;
+          ctx.globalAlpha = Math.max(0, Math.min(1, s.alpha * 0.7));
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        requestAnimationFrame(draw);
+      }
+
+      window.addEventListener('resize', resize);
+      resize();
+      draw();
+    }
+
+    /* =========================================================================
+       8. INITIALIZATION ON WINDOW LOAD
+       ========================================================================= */
+    window.onload = () => {
+      initBgCanvas();
+      init3D();
+      initVoices();
+
+      $('btnNarrate').onclick = () => {
+        const sceneData = scenes[current - 1];
+        const speakerKey = sceneData[4] || 'narrator';
+        speakText(`${sceneData[0]}. ${sceneData[1]}`, speakerKey);
+      };
+
+      $('btnSound').onclick = () => {
+        soundOn = !soundOn;
+        $('soundStatus').textContent = soundOn ? 'ligado' : 'desligado';
+        playBeepSound('click');
+      };
+
+      $('btnRestart').onclick = () => {
+        historyState = [1];
+        navigateTo(1, false);
+      };
+
+      $('btnPrev').onclick = () => {
+        if (historyState.length > 1) {
+          historyState.pop();
+          navigateTo(historyState[historyState.length - 1], false);
+        } else {
+          navigateTo(current - 1, false);
+        }
+      };
+
+      $('btnNext').onclick = () => {
+        if (current === 24) openCertificateModal();
+        else navigateTo(current + 1);
+      };
+
+      document.addEventListener('keydown', e => {
+        if (!$('modalOverlay').classList.contains('hidden')) {
+          if (e.key === 'Escape') closeModal();
+          return;
+        }
+        if (e.key === 'ArrowLeft') $('btnPrev').click();
+        if (e.key === 'ArrowRight' && !$('btnNext').disabled) $('btnNext').click();
+      });
+
+      renderPage();
+    };
+  </script>
+</body>
+</html>
